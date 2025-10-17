@@ -38,7 +38,6 @@ const Login = () => {
       
       // First try to login as patient
       try {
-        console.log('Attempting patient login for:', credentials.email);
         const patientResponse = await fetch('http://localhost:3000/api/patients/login', {
           method: 'POST',
           headers: {
@@ -48,7 +47,6 @@ const Login = () => {
         });
 
         const patientResult = await patientResponse.json();
-        console.log('Patient login response:', patientResult);
         
         if (patientResult.success) {
           // Patient login successful
@@ -57,7 +55,6 @@ const Login = () => {
             role: 'patient'
           };
           
-          console.log('Setting patient user:', patientUser);
           localStorage.setItem('user', JSON.stringify(patientUser));
           localStorage.setItem('token', 'patient-token-' + Date.now());
           
@@ -70,7 +67,6 @@ const Login = () => {
         }
       } catch (patientError) {
         // Patient login failed, try staff login
-        console.log('Patient login failed:', patientError);
       }
       
       // If patient login fails, try staff login (existing logic)
