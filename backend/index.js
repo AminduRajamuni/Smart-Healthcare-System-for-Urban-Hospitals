@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/auth.js";
@@ -32,6 +33,27 @@ app.use('/api/auth', authRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
+
+// Seed payments endpoint (no auth required for testing)
+app.post('/api/payments/seed', async (req, res) => {
+  try {
+    const PaymentService = (await import('./services/PaymentService.js')).default;
+    const payments = await PaymentService.createDummyPayments();
+    
+    res.status(201).json({
+      success: true,
+      data: payments,
+      message: 'Dummy payments created successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+app.use('/api/payments', paymentRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

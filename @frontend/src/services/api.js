@@ -13,9 +13,12 @@ class ApiService {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     
+    const token = localStorage.getItem('token');
+    
     const config = {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
       },
       ...options
     };
@@ -90,6 +93,39 @@ class ApiService {
 
   async getHospitalById(id) {
     return this.request(`/hospitals/${id}`);
+  }
+
+  // Payment methods
+  async getPaymentsByPatientId(patientId) {
+    return this.request(`/payments/patient/${patientId}`);
+  }
+
+  async getUnpaidPayments(patientId) {
+    return this.request(`/payments/patient/${patientId}/unpaid`);
+  }
+
+  async getPaymentSummary(patientId) {
+    return this.request(`/payments/patient/${patientId}/summary`);
+  }
+
+  async processCashPayment(appointmentId) {
+    return this.request(`/payments/appointment/${appointmentId}/cash`, {
+      method: 'POST'
+    });
+  }
+
+  async processCardPayment(appointmentId, cardDetails) {
+    return this.request(`/payments/appointment/${appointmentId}/card`, {
+      method: 'POST',
+      body: JSON.stringify(cardDetails)
+    });
+  }
+
+  async processInsuranceClaim(appointmentId, insuranceDetails) {
+    return this.request(`/payments/appointment/${appointmentId}/insurance`, {
+      method: 'POST',
+      body: JSON.stringify(insuranceDetails)
+    });
   }
 
   // SOLID Principle: Interface Segregation Principle (ISP)

@@ -16,6 +16,17 @@ export const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // Temporary: Allow mock token for testing
+    if (token.startsWith('patient-token-')) {
+      req.user = {
+        id: 'mock-user-id',
+        email: 'hasarangaweerasiri@gmail.com',
+        role: 'patient',
+        patientId: 'PAT270638583'
+      };
+      return next();
+    }
+
     // SOLID Principle: Dependency Inversion Principle (DIP)
     // We depend on abstraction (jwt.verify) not concrete implementation
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');

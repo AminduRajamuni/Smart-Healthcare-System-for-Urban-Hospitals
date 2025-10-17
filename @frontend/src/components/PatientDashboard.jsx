@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import PaymentDashboard from './PaymentDashboard';
 import './StaffDashboard.css';
 
 // Import icons
@@ -93,15 +94,7 @@ const PatientDashboard = () => {
   };
 
   const renderPayments = () => {
-    return (
-      <div className="dashboard-content">
-        <h2>Payment Information</h2>
-        <div className="dashboard-card">
-          <p>Payment information and history will be displayed here.</p>
-          <button className="primary-btn">Make Payment</button>
-        </div>
-      </div>
-    );
+    return <PaymentDashboard />;
   };
 
   const renderContent = () => {

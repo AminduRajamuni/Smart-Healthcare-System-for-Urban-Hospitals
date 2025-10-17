@@ -1,6 +1,7 @@
 // utils/seedData.js
 import HospitalService from '../services/HospitalService.js';
 import UserService from '../services/UserService.js';
+import PaymentService from '../services/PaymentService.js';
 
 // SOLID Principle: Single Responsibility Principle (SRP)
 // This utility is responsible only for seeding initial data
@@ -43,6 +44,14 @@ class SeedData {
         });
         
         console.log('✅ Default user created:', defaultUser.name);
+      }
+
+      // Create dummy payments
+      try {
+        await PaymentService.createDummyPayments();
+        console.log('✅ Dummy payments created successfully');
+      } catch (error) {
+        console.log('⚠️ Dummy payments already exist or failed to create');
       }
 
       return {
