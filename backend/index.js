@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/auth.js";
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
