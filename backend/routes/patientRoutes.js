@@ -10,5 +10,6 @@ router.post('/login', PatientController.loginPatient);
 router.get('/profile/:patientId', PatientController.getPatientProfile);
 router.get('/all', PatientController.getAllPatients);
 router.put('/update/:patientId', PatientController.updatePatient);
+router.get('/search', PatientController.searchPatients);
 
 export default router;

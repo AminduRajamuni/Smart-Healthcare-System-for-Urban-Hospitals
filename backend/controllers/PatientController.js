@@ -156,6 +156,27 @@ class PatientController {
       });
     }
   }
+
+  async searchPatients(req, res) {
+    try {
+      const { term } = req.query;
+      const patients = await PatientService.searchPatients({ term });
+      return res.status(200).json({
+        success: true,
+        data: patients.map(patient => ({
+          patientId: patient.patientId,
+          name: patient.name,
+          email: patient.email,
+          dob: patient.dob,
+          gender: patient.gender,
+          address: patient.address,
+          contactNumber: patient.contactNumber
+        }))
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 
 export default new PatientController();

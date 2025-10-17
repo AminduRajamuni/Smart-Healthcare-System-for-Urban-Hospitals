@@ -654,6 +654,121 @@
   gap: 15px;
 }
 
+.reports-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.report-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.05s ease;
+}
+
+.report-card:hover {
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.report-card-header h4 {
+  font-weight: 600;
+}
+
+.report-card-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.report-id {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-card-body p {
+  margin: 4px 0;
+  color: #374151;
+  font-size: 14px;
+}
+
+.report-card-body ul {
+  margin: 6px 0 0 18px;
+}
+
+.report-card .action-btn.view { background-color: #dbeafe; color: #1e40af; }
+.report-card .action-btn.generate { background-color: #10b981; color: #fff; }
+.report-card .action-btn.delete { background-color: #fee2e2; color: #dc2626; }
+
+.report-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.report-card .action-btn.generate {
+  background-color: #10b981;
+  color: #fff;
+}
+
+.report-card .action-btn.delete {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.report-detail-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.report-detail-content {
+  background: #fff;
+  width: min(640px, 92vw);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  padding: 20px 24px;
+}
+
+.report-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.report-detail-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.report-detail-section p {
+  margin: 8px 0;
+}
+
 .report-item {
   display: flex;
   align-items: center;

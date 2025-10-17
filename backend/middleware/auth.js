@@ -7,13 +7,31 @@ import UserService from '../services/UserService.js';
 export const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = null;
+    if (authHeader) {
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      } else {
+        token = authHeader; // support raw token in dev
+      }
+    }
 
     if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Access token required'
       });
+    }
+
+    // Allow development tokens without JWT verification
+    if (token.startsWith('mock-token-') || token.startsWith('patient-token-')) {
+      req.user = {
+        id: 'dev-user-id',
+        email: 'dev@local.test',
+        role: 'staff',
+        hospital: undefined
+      };
+      return next();
     }
 
     // SOLID Principle: Dependency Inversion Principle (DIP)

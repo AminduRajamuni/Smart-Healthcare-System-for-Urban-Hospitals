@@ -53,6 +53,24 @@ class PatientService {
     }
   }
 
+  async searchPatients(query) {
+    try {
+      const { term } = query;
+      if (!term) return [];
+
+      // search by patientId exact or name partial (case-insensitive)
+      return await Patient.find({
+        isActive: true,
+        $or: [
+          { patientId: term },
+          { name: { $regex: term, $options: 'i' } }
+        ]
+      }).sort({ createdAt: -1 });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async updatePatient(patientId, updateData) {
     try {
       const patient = await Patient.findOneAndUpdate(

@@ -10,7 +10,12 @@ class DoctorService {
       // SOLID Principle: Dependency Inversion Principle (DIP)
       // We depend on abstraction (HospitalService) not concrete implementation
       const hospital = await HospitalService.getHospitalById(hospitalId);
-      
+      // Duplicate check by email within same hospital
+      const existing = await Doctor.findOne({ email: doctorData.email.toLowerCase(), hospital: hospitalId, isActive: true });
+      if (existing) {
+        throw new Error('Doctor already exists');
+      }
+
       const doctor = new Doctor({
         ...doctorData,
         hospital: hospitalId

@@ -12,12 +12,17 @@ class ApiService {
   // This method can be extended for different HTTP methods without modification
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
     const config = {
+      ...options,
       headers: {
-        'Content-Type': 'application/json'
-      },
-      ...options
+        ...defaultHeaders,
+        ...(options.headers || {})
+      }
     };
 
     try {
@@ -80,6 +85,67 @@ class ApiService {
   async deleteDoctor(id) {
     return this.request(`/doctors/${id}`, {
       method: 'DELETE'
+    });
+  }
+
+  // Patient methods
+  async searchPatients(term) {
+    const q = encodeURIComponent(term || '');
+    return this.request(`/patients/search?term=${q}`);
+  }
+
+  async getPatientProfile(patientId) {
+    return this.request(`/patients/profile/${encodeURIComponent(patientId)}`);
+  }
+
+  async getAllPatients() {
+    return this.request('/patients/all');
+  }
+
+  // Medical reports
+  async createMedicalReport(patientId, reportData, token) {
+    return this.request(`/medical-reports/${encodeURIComponent(patientId)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(reportData)
+    });
+  }
+
+  async getMedicalReports(patientId, token) {
+    return this.request(`/medical-reports/${encodeURIComponent(patientId)}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+  }
+
+  async getAllMedicalReports(token) {
+    return this.request(`/medical-reports`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+  }
+
+  async getMedicalReportById(reportId, token) {
+    // If backend supports by ID later; currently fetch all and filter client-side
+    const list = await this.getAllMedicalReports(token);
+    if (list?.data) {
+      const found = list.data.find(r => r._id === reportId || r.reportId === reportId);
+      return { success: Boolean(found), data: found || null };
+    }
+    return list;
+  }
+
+  async deleteMedicalReport(reportId, token) {
+    return this.request(`/medical-reports/${encodeURIComponent(reportId)}`, {
+      method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
     });
   }
 

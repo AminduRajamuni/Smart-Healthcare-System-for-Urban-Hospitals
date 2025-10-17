@@ -13,7 +13,13 @@ import inventoryIcon from '../assets/icons/inventory.png';
 
 const StaffDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('doctor-roster');
+  const [activeTab, setActiveTab] = useState('patients');
+  const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [patientResults, setPatientResults] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [reportData, setReportData] = useState({ title: '', diagnosis: '', notes: '', prescribedMedications: '' });
+  const [reports, setReports] = useState([]);
+  const [reportDetail, setReportDetail] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -26,9 +32,173 @@ const StaffDashboard = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
+  /**
+   * Return auth token from localStorage in browser environments.
+   */
+  const getAuthToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+
+  /**
+   * Refresh the global reports list for Billings/Reports tab
+   */
+  const handleRefreshReports = async () => {
+    try {
+      setLoading(true);
+      const res = await apiService.getAllMedicalReports(getAuthToken());
+      if (res.success) setReports(res.data);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Failed to load reports' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Open the selected report in the detail modal
+   */
+  const handleViewReport = (report) => setReportDetail(report);
+
+  /**
+   * Delete a report by id after user confirmation
+   */
+  const handleDeleteReport = async (report) => {
+    if (!confirm('Delete this report?')) return;
+    try {
+      setLoading(true);
+      const res = await apiService.deleteMedicalReport(report._id, getAuthToken());
+      if (res.success) setReports(prev => prev.filter(x => x._id !== report._id));
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Failed to delete report' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Generate a sectioned report PDF for the given report
+   * NOTE: Uses jspdf + autotable when available; falls back gracefully.
+   */
+  const handleGeneratePdf = async (r) => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      try { await import('jspdf-autotable'); } catch {}
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 48;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const brand = [37, 99, 235];
+
+      // Header
+      doc.setFillColor(...brand);
+      doc.rect(0, 0, pageWidth, 60, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.text('HealthFirst', margin, 34);
+      doc.setFontSize(12);
+      doc.text('Medical Report', margin, 50);
+
+      // Helpers
+      const sectionTitle = (text, y) => {
+        doc.setTextColor(17, 24, 39);
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'bold');
+        doc.text(text, margin, y);
+        doc.setFont(undefined, 'normal');
+      };
+
+      const drawTable = (startY, bodyRows) => {
+        if (doc.autoTable) {
+          doc.autoTable({
+            startY,
+            head: [['Field', 'Value']],
+            body: bodyRows,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 11, cellPadding: 6 },
+            headStyles: { fillColor: [229,231,235], textColor: 17 },
+            columnStyles: { 0: { cellWidth: 140, fontStyle: 'bold' }, 1: { cellWidth: pageWidth - margin * 2 - 140 } },
+            theme: 'grid'
+          });
+          return doc.lastAutoTable.finalY + 18;
+        }
+        // Fallback without autotable
+        let y = startY + 6;
+        doc.setTextColor(17, 24, 39);
+        doc.setFontSize(12);
+        bodyRows.forEach(([k, v]) => {
+          doc.setFont(undefined, 'bold');
+          doc.text(`${k}:`, margin, y);
+          doc.setFont(undefined, 'normal');
+          const lines = doc.splitTextToSize(String(v || '-'), pageWidth - margin * 2 - 80);
+          doc.text(lines, margin + 80, y);
+          y += 16 + Math.max(0, lines.length - 1) * 14;
+        });
+        return y + 12;
+      };
+
+      // Section 1: Title & Report ID
+      let yPos = 96;
+      sectionTitle('Report Summary', yPos);
+      yPos = drawTable(yPos + 8, [
+        ['Title', r.title || 'Medical Report'],
+        ['Report ID', r.reportId || '-']
+      ]);
+
+      // Section 2: Patient
+      sectionTitle('Patient Information', yPos);
+      yPos = drawTable(yPos + 8, [
+        ['Patient Name', r.patient?.name || '-'],
+        ['Patient ID', r.patient?.patientId || '-']
+      ]);
+
+      // Section 3: Clinical Details
+      const medsText = Array.isArray(r.prescribedMedications) && r.prescribedMedications.length
+        ? r.prescribedMedications.join(', ')
+        : '-';
+      sectionTitle('Clinical Details', yPos);
+      yPos = drawTable(yPos + 8, [
+        ['Diagnosis', r.diagnosis || '-'],
+        ['Notes', r.notes || '-'],
+        ['Medications', medsText]
+      ]);
+
+      // Section 4: Audit
+      sectionTitle('Created Details', yPos);
+      yPos = drawTable(yPos + 8, [
+        ['Created By', r.createdBy || 'N/A'],
+        ['Created At', new Date(r.createdAt).toLocaleString()]
+      ]);
+
+      // Footer page number
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const footerY = doc.internal.pageSize.getHeight() - 24;
+        doc.setFontSize(9);
+        doc.setTextColor(107,114,128);
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
+      }
+
+      doc.save(`${r.reportId || 'report'}.pdf`);
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Failed to generate PDF' });
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'doctor-roster') {
       fetchDoctors();
+    }
+    if (activeTab === 'patients') {
+      // load all patients initially
+      (async () => {
+        try {
+          setLoading(true);
+          const res = await apiService.getAllPatients();
+          if (res.success) setPatientResults(res.data);
+        } catch (err) {
+          // ignore initial load error visual noise
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   }, [activeTab]);
 
@@ -168,48 +338,146 @@ const StaffDashboard = () => {
           <div className="content-section">
             <h1>Patients</h1>
             <div className="patients-content">
+              {message.text && (
+                <div className={`message ${message.type}`} style={{ marginBottom: '12px' }}>
+                  {message.text}
+                </div>
+              )}
               <div className="search-bar">
-                <input type="text" placeholder="Search patients..." />
-                <button className="search-btn">Search</button>
+                <input type="text" placeholder="Search by ID or name" value={patientSearchTerm} onChange={(e) => setPatientSearchTerm(e.target.value)} />
+                <button className="search-btn" onClick={async () => {
+                  try {
+                    const res = patientSearchTerm
+                      ? await apiService.searchPatients(patientSearchTerm)
+                      : await apiService.getAllPatients();
+                    if (res.success) setPatientResults(res.data);
+                  } catch (err) {
+                    setMessage({ type: 'error', text: err.message || 'Search failed' });
+                  }
+                }}>Search</button>
               </div>
-              <div className="patients-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Patient ID</th>
-                      <th>Name</th>
-                      <th>Age</th>
-                      <th>Contact</th>
-                      <th>Last Visit</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>P001</td>
-                      <td>John Smith</td>
-                      <td>45</td>
-                      <td>+1 234-567-8900</td>
-                      <td>2024-01-15</td>
-                      <td>
-                        <button className="action-btn view">View</button>
-                        <button className="action-btn edit">Edit</button>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>P002</td>
-                      <td>Emily Davis</td>
-                      <td>32</td>
-                      <td>+1 234-567-8901</td>
-                      <td>2024-01-14</td>
-                      <td>
-                        <button className="action-btn view">View</button>
-                        <button className="action-btn edit">Edit</button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              {patientResults.length > 0 && (
+                <div className="patients-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientResults.map((p) => (
+                        <tr key={p.patientId}>
+                          <td>{p.patientId}</td>
+                          <td>{p.name}</td>
+                          <td>{p.email}</td>
+                          <td>{p.contactNumber}</td>
+                          <td>
+                            <button className="action-btn view" onClick={async () => {
+                              setSelectedPatient(p);
+                              try {
+                                const res = await apiService.getMedicalReports(p.patientId);
+                                if (res.success) setReports(res.data);
+                              } catch {}
+                            }}>Add Medical Report</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {selectedPatient && (
+                <div className="report-form" style={{ marginTop: '20px' }}>
+                  <h2>Add Medical Report for {selectedPatient.name} ({selectedPatient.patientId})</h2>
+                  <div className="form-group">
+                    <label>Title</label>
+                    <input type="text" value={reportData.title} onChange={(e) => setReportData({ ...reportData, title: e.target.value })} placeholder="e.g., Follow-up Consultation" />
+                  </div>
+                  <div className="form-group">
+                    <label>Diagnosis *</label>
+                    <textarea value={reportData.diagnosis} onChange={(e) => setReportData({ ...reportData, diagnosis: e.target.value })} placeholder="Enter diagnosis" required />
+                  </div>
+                  <div className="form-group">
+                    <label>Notes</label>
+                    <textarea value={reportData.notes} onChange={(e) => setReportData({ ...reportData, notes: e.target.value })} placeholder="Additional notes" />
+                  </div>
+                  <div className="form-group">
+                    <label>Medications (comma separated)</label>
+                    <input type="text" value={reportData.prescribedMedications} onChange={(e) => setReportData({ ...reportData, prescribedMedications: e.target.value })} placeholder="Paracetamol 500mg, Amoxicillin" />
+                  </div>
+                  <button className="save-btn" onClick={async () => {
+                    if (!reportData.diagnosis) {
+                      setMessage({ type: 'error', text: "Diagnosis is required" });
+                      return;
+                    }
+                    try {
+                      setLoading(true);
+                      setMessage({ type: '', text: '' });
+                      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                      const payload = {
+                        title: reportData.title,
+                        diagnosis: reportData.diagnosis,
+                        notes: reportData.notes,
+                        prescribedMedications: (reportData.prescribedMedications || '')
+                          .split(',')
+                          .map(s => s.trim())
+                          .filter(Boolean),
+                        createdBy: user?.email
+                      };
+                      const res = await apiService.createMedicalReport(selectedPatient.patientId, payload, token);
+                      if (res.success) {
+                        setMessage({ type: 'success', text: 'Medical report saved successfully' });
+                        setReportData({ title: '', diagnosis: '', notes: '', prescribedMedications: '' });
+                        try {
+                          const list = await apiService.getMedicalReports(selectedPatient.patientId);
+                          if (list.success) setReports(list.data);
+                        } catch {}
+                      } else {
+                        setMessage({ type: 'error', text: res.message || 'Failed to save report' });
+                      }
+                    } catch (err) {
+                      setMessage({ type: 'error', text: err.message || 'Failed to save report' });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} disabled={loading}>
+                    {loading ? 'Saving...' : 'Save Report'}
+                  </button>
+                </div>
+              )}
+
+              {selectedPatient && reports.length > 0 && (
+                <div style={{ marginTop: '24px' }}>
+                  <h3>Existing Reports</h3>
+                  <div className="doctors-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Report ID</th>
+                          <th>Title</th>
+                          <th>Diagnosis</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reports.map(r => (
+                          <tr key={r._id}>
+                            <td>{r.reportId}</td>
+                            <td>{r.title}</td>
+                            <td>{r.diagnosis}</td>
+                            <td>{new Date(r.createdAt).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -360,28 +628,70 @@ const StaffDashboard = () => {
             <h1>Billings/Reports</h1>
             <div className="reports-content">
               <div className="report-filters">
-                <select>
-                  <option>All Reports</option>
-                  <option>Financial Reports</option>
-                  <option>Patient Reports</option>
-                  <option>Doctor Reports</option>
-                </select>
-                <input type="date" />
-                <input type="date" />
-                <button className="generate-btn">Generate Report</button>
+                <button className="generate-btn" onClick={handleRefreshReports}>Refresh</button>
               </div>
-              <div className="reports-list">
-                <div className="report-item">
-                  <h4>Monthly Revenue Report</h4>
-                  <p>January 2024</p>
-                  <button className="download-btn">Download</button>
+
+              {reports?.length === 0 && (
+                <p style={{ marginTop: '12px' }}>No reports yet. Add a medical report from the Patients tab.</p>
+              )}
+
+              {reports?.length > 0 && (
+                <div className="reports-cards">
+                  {reports.map(r => (
+                    <div className="report-card" key={r._id}>
+                      <div className="report-card-header">
+                        <h4>{r.title || 'Medical Report'}</h4>
+                        <span className="report-id">{r.reportId}</span>
+                      </div>
+                      <div className="report-card-body">
+                        <p><strong>Title:</strong> {r.title || 'Medical Report'}</p>
+                        <p><strong>Report ID:</strong> {r.reportId}</p>
+                      </div>
+                      <div className="report-card-actions">
+                        <button className="action-btn view" onClick={() => handleViewReport(r)}>View</button>
+                        <button className="action-btn delete" onClick={() => handleDeleteReport(r)}>Delete</button>
+                        <button className="action-btn generate" onClick={() => handleGeneratePdf(r)}>Generate PDF</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="report-item">
-                  <h4>Patient Statistics</h4>
-                  <p>Q4 2023</p>
-                  <button className="download-btn">Download</button>
+              )}
+
+              {reportDetail && (
+                <div className="report-detail-modal" role="dialog" aria-modal="true">
+                  <div className="report-detail-content">
+                    <div className="report-detail-header">
+                      <h3>{reportDetail.title || 'Medical Report'}</h3>
+                      <button className="close-btn" onClick={() => setReportDetail(null)}>✕</button>
+                    </div>
+                    <div className="report-detail-section">
+                      {reportDetail.patient && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <h4 style={{ margin: '0 0 8px 0' }}>Patient Information</h4>
+                          <p><strong>Name:</strong> {reportDetail.patient.name || '-'} ({reportDetail.patient.patientId || '-'})</p>
+                          <p><strong>Email:</strong> {reportDetail.patient.email || '-'}</p>
+                          <p><strong>Gender:</strong> {reportDetail.patient.gender || '-'}</p>
+                          <p><strong>DOB:</strong> {reportDetail.patient.dob ? new Date(reportDetail.patient.dob).toLocaleDateString() : '-'}</p>
+                          <p><strong>Contact:</strong> {reportDetail.patient.contactNumber || '-'}</p>
+                        </div>
+                      )}
+                      <p><strong>Report ID:</strong> {reportDetail.reportId}</p>
+                      <p><strong>Diagnosis:</strong> {reportDetail.diagnosis}</p>
+                      {reportDetail.notes && <p><strong>Notes:</strong> {reportDetail.notes}</p>}
+                      {Array.isArray(reportDetail.prescribedMedications) && reportDetail.prescribedMedications.length > 0 && (
+                        <div>
+                          <strong>Medications:</strong>
+                          <ul>
+                            {reportDetail.prescribedMedications.map((m, idx) => <li key={idx}>{m}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                      <p><strong>Created By:</strong> {reportDetail.createdBy || 'N/A'}</p>
+                      <p><strong>Created At:</strong> {new Date(reportDetail.createdAt).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         );
