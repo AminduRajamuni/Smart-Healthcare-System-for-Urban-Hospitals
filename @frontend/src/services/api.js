@@ -83,6 +83,36 @@ class ApiService {
     });
   }
 
+  // Patient methods
+  async createPatient(patientData) {
+    return this.request('/patients/create', {
+      method: 'POST',
+      body: JSON.stringify(patientData)
+    });
+  }
+
+  async loginPatient(email) {
+    return this.request('/patients/login', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  async getAllPatients() {
+    return this.request('/patients/all');
+  }
+
+  // Report methods
+  async getReportSummary(params = {}) {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') search.append(key, value);
+    });
+    const query = search.toString();
+    const endpoint = query ? `/reports/summary?${query}` : '/reports/summary';
+    return this.request(endpoint, { headers: { 'Accept': 'application/json' } });
+  }
+
   // Hospital methods
   async getHospitals() {
     return this.request('/hospitals');

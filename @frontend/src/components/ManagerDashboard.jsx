@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 import './StaffDashboard.css';
 import { buildLineChartPath } from '../utils/chart';
 
@@ -60,23 +61,12 @@ const ManagerDashboard = () => {
         setLoading(true);
         setError('');
 
-        const [hospitalsRes, doctorsRes, patientsRes] = await Promise.all([
-          fetch('http://localhost:3000/api/hospitals'),
-          fetch('http://localhost:3000/api/doctors'),
-          fetch('http://localhost:3000/api/patients/all')
-        ]);
-
         const [hospitalsData, doctorsData, patientsData] = await Promise.all([
-          hospitalsRes.json(),
-          doctorsRes.json(),
-          patientsRes.json()
+          apiService.getHospitals(),
+          apiService.getDoctors(),
+          apiService.getAllPatients()
         ]);
 
-        if (!hospitalsRes.ok) throw new Error(hospitalsData.message || 'Failed to load hospitals');
-        if (!doctorsRes.ok) throw new Error(doctorsData.message || 'Failed to load doctors');
-        if (!patientsRes.ok) throw new Error(patientsData.message || 'Failed to load patients');
-
-        // Expecting shape { success, data }
         setHospitals(hospitalsData.data || []);
         setDoctors(doctorsData.data || []);
         setPatients(patientsData.data || []);
@@ -247,26 +237,7 @@ const ManagerDashboard = () => {
                       setReportLoading(true);
                       setReportError('');
                       setReportData(null);
-                      const params = new URLSearchParams();
-                      if (reportFilters.hospitalId) params.append('hospitalId', reportFilters.hospitalId);
-                      if (reportFilters.doctorId) params.append('doctorId', reportFilters.doctorId);
-                      if (reportFilters.from) params.append('from', reportFilters.from);
-                      if (reportFilters.to) params.append('to', reportFilters.to);
-                      const url = `http://localhost:3000/api/reports/summary?${params.toString()}`;
-                      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-
-                      const contentType = res.headers.get('content-type') || '';
-                      let payload;
-                      if (contentType.includes('application/json')) {
-                        payload = await res.json();
-                      } else {
-                        const text = await res.text();
-                        throw new Error(`Unexpected response (${res.status} ${res.statusText}). Content-Type: ${contentType}. Body: ${text.slice(0, 120)}...`);
-                      }
-
-                      if (!res.ok || !payload?.success) {
-                        throw new Error(payload?.message || `Failed to generate report (${res.status})`);
-                      }
+                      const payload = await apiService.getReportSummary(reportFilters);
                       setReportData(payload.data);
                     } catch (err) {
                       setReportError(err.message || 'Failed to generate report');

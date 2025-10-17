@@ -1,6 +1,7 @@
 // components/Login.jsx
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 import CreatePatient from './CreatePatient';
 import './Login.css';
 
@@ -38,39 +39,18 @@ const Login = () => {
       
       // First try to login as patient
       try {
-        console.log('Attempting patient login for:', credentials.email);
-        const patientResponse = await fetch('http://localhost:3000/api/patients/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email: credentials.email }),
-        });
-
-        const patientResult = await patientResponse.json();
-        console.log('Patient login response:', patientResult);
-        
+        const patientResult = await apiService.loginPatient(credentials.email);
         if (patientResult.success) {
-          // Patient login successful
-          const patientUser = {
-            ...patientResult.data,
-            role: 'patient'
-          };
-          
-          console.log('Setting patient user:', patientUser);
+          const patientUser = { ...patientResult.data, role: 'patient' };
           localStorage.setItem('user', JSON.stringify(patientUser));
           localStorage.setItem('token', 'patient-token-' + Date.now());
-          
           setMessage({ type: 'success', text: 'Patient login successful!' });
           setLoading(false);
-          
-          // Force re-render by updating auth context
           window.location.reload();
           return;
         }
       } catch (patientError) {
-        // Patient login failed, try staff login
-        console.log('Patient login failed:', patientError);
+        // Continue to staff login fallback
       }
       
       // If patient login fails, try staff login (existing logic)

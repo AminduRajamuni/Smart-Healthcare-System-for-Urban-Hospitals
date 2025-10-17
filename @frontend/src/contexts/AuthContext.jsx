@@ -30,13 +30,12 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
       
-      console.log('Auth check - Token:', token);
-      console.log('Auth check - User data:', userData);
+      
       
       if (token && userData) {
         // Check if it's a mock token (starts with 'mock-token-') or patient token (starts with 'patient-token-')
         if (token.startsWith('mock-token-') || token.startsWith('patient-token-')) {
-          console.log('Token recognized, setting user as authenticated');
+          
           setUser(JSON.parse(userData));
           setIsAuthenticated(true);
         } else {

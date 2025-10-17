@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import apiService from '../services/api';
 import './Login.css';
 
 const CreatePatient = ({ onBack, onPatientCreated }) => {
@@ -34,15 +35,7 @@ const CreatePatient = ({ onBack, onPatientCreated }) => {
       setLoading(true);
       setMessage({ type: '', text: '' });
       
-      const response = await fetch('http://localhost:3000/api/patients/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await response.json();
+      const result = await apiService.createPatient(formData);
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Patient created successfully! You can now login with your email.' });
