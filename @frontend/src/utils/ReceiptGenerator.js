@@ -1,5 +1,8 @@
 import jsPDF from 'jspdf';
 
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This utility is responsible only for generating/printing/downloading receipt PDFs
+
 // Receipt PDF Generator Component
 const ReceiptGenerator = {
   generateReceipt: (payment) => {

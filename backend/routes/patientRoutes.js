@@ -1,5 +1,8 @@
 // routes/patientRoutes.js
 import express from 'express';
+
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This router defines only patient-related HTTP endpoints
 import PatientController from '../controllers/PatientController.js';
 
 const router = express.Router();

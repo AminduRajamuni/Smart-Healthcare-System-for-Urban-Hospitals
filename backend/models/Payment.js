@@ -1,6 +1,9 @@
 // models/Payment.js
 import mongoose from 'mongoose';
 
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This model defines only the payment data schema and related hooks
+
 const paymentSchema = new mongoose.Schema({
   appointmentId: {
     type: String,

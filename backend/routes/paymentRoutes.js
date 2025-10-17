@@ -1,5 +1,8 @@
 // routes/paymentRoutes.js
 import express from 'express';
+
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This router defines only payment-related HTTP endpoints
 import PaymentController from '../controllers/PaymentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 

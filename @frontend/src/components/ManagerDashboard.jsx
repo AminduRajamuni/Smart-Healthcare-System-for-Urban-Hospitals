@@ -1,4 +1,6 @@
 import { useState } from 'react';
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This component renders manager dashboard UI and delegates data concerns elsewhere
 import { useAuth } from '../contexts/AuthContext';
 import './StaffDashboard.css';
 

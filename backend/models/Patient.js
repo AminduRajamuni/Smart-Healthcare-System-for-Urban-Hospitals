@@ -1,6 +1,9 @@
 // models/Patient.js
 import mongoose from 'mongoose';
 
+// SOLID Principle: Single Responsibility Principle (SRP)
+// This model defines only the patient data schema and related hooks
+
 const patientSchema = new mongoose.Schema({
   patientId: {
     type: String,
