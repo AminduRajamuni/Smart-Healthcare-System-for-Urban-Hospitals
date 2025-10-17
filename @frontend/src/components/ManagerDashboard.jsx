@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import './StaffDashboard.css';
+import { buildLineChartPath } from '../utils/chart';
 
 // Import icons
 import dashboardIcon from '../assets/icons/dashboard.png';
@@ -27,20 +28,7 @@ const ManagerDashboard = () => {
   const [reportFilters, setReportFilters] = useState({ hospitalId: '', doctorId: '', from: '', to: '' });
   const [reportViewTab, setReportViewTab] = useState('charts');
 
-  const buildLineChartPath = (values) => {
-    // SRP: Pure helper to generate an SVG polyline path for a simple line chart
-    if (!values || values.length === 0) return '';
-    const maxVal = Math.max(...values, 1);
-    const width = 600;
-    const height = 180;
-    const stepX = width / Math.max(values.length - 1, 1);
-    const points = values.map((v, i) => {
-      const x = i * stepX;
-      const y = height - (v / maxVal) * height;
-      return `${x},${y}`;
-    });
-    return `M ${points[0]} L ${points.slice(1).join(' ')}`;
-  };
+  
 
   const getChartData = () => {
     // OCP: Allows switching between mock and backend data without changing consumers
