@@ -6,10 +6,12 @@ import Patient from '../models/Patient.js';
 import MedicalReportService from '../services/MedicalReportService.js';
 
 describe('MedicalReportService.createReport', () => {
+  // Reset mocks before each test to ensure test isolation
   beforeEach(() => {
     mockingoose.resetAll();
   });
 
+  // Test successful report creation with valid patient and diagnosis
   it('creates a report when patient exists and diagnosis provided', async () => {
     const patientObjectId = new mongoose.Types.ObjectId();
     const patientDoc = {
@@ -23,6 +25,7 @@ describe('MedicalReportService.createReport', () => {
       contactNumber: '1234567890'
     };
 
+    // Mock patient lookup to return test patient
     mockingoose(Patient).toReturn(patientDoc, 'findOne');
 
     const savedReportDoc = {
@@ -37,6 +40,7 @@ describe('MedicalReportService.createReport', () => {
       createdAt: new Date()
     };
 
+    // Mock report save operation
     mockingoose(MedicalReport).toReturn(savedReportDoc, 'save');
 
     const result = await MedicalReportService.createReport('PAT123456', {
@@ -46,13 +50,16 @@ describe('MedicalReportService.createReport', () => {
       createdBy: 'Dr. Smith'
     });
 
+    // Verify report was created with correct data
     expect(result).toBeDefined();
     expect(result.patient.toString()).toBe(patientObjectId.toString());
     expect(result.diagnosis).toBe('Flu');
     expect(result.title).toBe('Medical Report');
   });
 
+  // Test error handling when patient doesn't exist
   it('throws error when patient not found', async () => {
+    // Mock patient lookup to return null (patient not found)
     mockingoose(Patient).toReturn(null, 'findOne');
 
     await expect(
@@ -60,8 +67,10 @@ describe('MedicalReportService.createReport', () => {
     ).rejects.toThrow('Patient not found');
   });
 
+  // Test validation when required diagnosis field is missing
   it("throws error when 'Diagnosis' is missing", async () => {
     const patientObjectId = new mongoose.Types.ObjectId();
+    // Mock patient exists but report data is incomplete
     mockingoose(Patient).toReturn({ _id: patientObjectId, patientId: 'PAT1', name: 'Jane', email: 'jane@example.com', dob: new Date('1992-02-02'), gender: 'female', address: 'Addr', contactNumber: '000' }, 'findOne');
 
     await expect(

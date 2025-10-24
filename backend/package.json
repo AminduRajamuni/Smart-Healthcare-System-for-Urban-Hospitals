@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "mockingoose": "^2.37.0"
+    "mockingoose": "^2.16.2"
   },
   "jest": {
     "testEnvironment": "node",
